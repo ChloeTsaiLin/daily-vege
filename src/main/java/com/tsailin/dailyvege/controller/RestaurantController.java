@@ -1,32 +1,39 @@
 package com.tsailin.dailyvege.controller;
 
 import com.tsailin.dailyvege.entity.Restaurant;
-import com.tsailin.dailyvege.repository.RestaurantRepository;
+import com.tsailin.dailyvege.service.RestaurantService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 
 @RestController
+@Validated
 public class RestaurantController {
 
     @Autowired
-    private RestaurantRepository repository;
+    private RestaurantService restaurantService;
 
     @PostMapping("/restaurants")
-    public String create(@RequestBody Restaurant restaurant){
-        repository.save(restaurant);
+    public ResponseEntity<Restaurant> create(@RequestBody @Valid Restaurant restaurantRequest){
 
-        return "restaurant created.";
+        Long id = restaurantService.saveRestaurant(restaurantRequest);
+        Restaurant restaurant = restaurantService.getRestaurantById(id);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(restaurant);
     }
 
     @GetMapping("/restaurants/{restaurantId}")
-    public String readById(@PathVariable String restaurantId){
+    public ResponseEntity<Object> readById(@PathVariable Long restaurantId) {
 
-        Long id = Long.valueOf(restaurantId);
-        if(repository.existsById(id)){
-            return "get restaurant by id.";
-        } else{
-            return "NOT FOUND.";
+        Restaurant restaurant = restaurantService.getRestaurantById(restaurantId);
+        if (restaurant != null) {
+            return ResponseEntity.status(HttpStatus.OK).body(restaurant);
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
     }
 

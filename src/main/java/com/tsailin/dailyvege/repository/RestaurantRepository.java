@@ -1,11 +1,9 @@
 package com.tsailin.dailyvege.repository;
 
 import com.tsailin.dailyvege.entity.Restaurant;
-import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.List;
+public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
 
-public interface RestaurantRepository extends CrudRepository<Restaurant, Long> {
-
-    List<Restaurant> id(Long id);
+    boolean existsByGooglePlaceId(String googlePlaceId);
 }
