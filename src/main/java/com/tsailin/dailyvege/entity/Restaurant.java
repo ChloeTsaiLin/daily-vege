@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.Data;
 
-import java.sql.Timestamp;
+import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "restaurants")
@@ -23,8 +23,8 @@ public class Restaurant {
     @JsonProperty("google_place_id")
     private String googlePlaceId;
 
-//    private Double latitude;
-//    private Double longitude;
+    private Double latitude;
+    private Double longitude;
 
     @Column(name = "veg_type")
     @JsonProperty("veg_type")
@@ -33,7 +33,7 @@ public class Restaurant {
 
 //    private Integer verifyCount;
 
-    private Timestamp createdDate;
+    private OffsetDateTime createdDate;
 
-    private Timestamp lastModifiedDate;
+    private OffsetDateTime lastModifiedDate;
 }

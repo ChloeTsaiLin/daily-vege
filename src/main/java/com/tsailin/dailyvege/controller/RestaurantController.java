@@ -37,4 +37,18 @@ public class RestaurantController {
         }
     }
 
+    @PutMapping("/restaurants/{restaurantId}")
+    public ResponseEntity<Object> updateById(@PathVariable Long restaurantId,
+                                             @RequestBody @Valid Restaurant restaurantRequest) {
+
+        Long id = restaurantService.updateRestaurant(restaurantId, restaurantRequest);
+        Restaurant updateRestaurant = restaurantService.getRestaurantById(id);
+        return ResponseEntity.status(HttpStatus.OK).body(updateRestaurant);
+    }
+
+    @DeleteMapping("/restaurants/{restaurantId}")
+    public ResponseEntity<Object> deleteById(@PathVariable Long restaurantId){
+        restaurantService.deleteRestaurant(restaurantId);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
 }
