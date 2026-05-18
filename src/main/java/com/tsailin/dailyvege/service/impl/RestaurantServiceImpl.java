@@ -4,7 +4,9 @@ import com.tsailin.dailyvege.entity.Restaurant;
 import com.tsailin.dailyvege.repository.RestaurantRepository;
 import com.tsailin.dailyvege.service.RestaurantService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 
@@ -21,13 +23,15 @@ public class RestaurantServiceImpl implements RestaurantService {
     @Override
     public Long saveRestaurant(Restaurant restaurantRequest) {
 
-        String googleId = restaurantRequest.getGooglePlaceId();
-
-        if (restaurantRepository.existsByGooglePlaceId(googleId)) {
-            throw new RuntimeException("GooglePlaceId(%s) already exists.".formatted(googleId));
+        if (restaurantRequest.getId() != null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Invalid Request: ID should not be provided for creation.");
         }
+        restaurantRequest.setVegType(restaurantRequest.getVegType());
+        restaurantRequest.setRestaurantStyle(restaurantRequest.getRestaurantStyle());
         restaurantRequest.setCreatedDate(OffsetDateTime.now());
         restaurantRequest.setLastModifiedDate(OffsetDateTime.now());
+
         Restaurant savedRestaurant = restaurantRepository.save(restaurantRequest);
 
         return savedRestaurant.getId();
@@ -39,25 +43,26 @@ public class RestaurantServiceImpl implements RestaurantService {
     }
 
     @Override
-    public Long updateRestaurant(Long restaurantId, Restaurant restaurantRequest) {
+    public void updateRestaurant(Long restaurantId, Restaurant restaurantRequest) {
 
-        return restaurantRepository.findById(restaurantId).map(existingRestaurant -> {
+        Restaurant existingRestaurant = getRestaurantById(restaurantId);
 
-            existingRestaurant.setName(restaurantRequest.getName());
-//             existingRestaurant.setGooglePlaceId(restaurantRequest.getGooglePlaceId());
-             existingRestaurant.setLatitude(restaurantRequest.getLatitude());
-             existingRestaurant.setLongitude(restaurantRequest.getLongitude());
-             existingRestaurant.setVegType(restaurantRequest.getVegType());
-             existingRestaurant.setLastModifiedDate(OffsetDateTime.now());
+        existingRestaurant.setVegType(restaurantRequest.getVegType());
+        existingRestaurant.setRestaurantStyle(restaurantRequest.getRestaurantStyle());
+        existingRestaurant.setLastModifiedDate(OffsetDateTime.now());
 
-            return restaurantRepository.save(existingRestaurant).getId();
+        restaurantRepository.save(existingRestaurant);
 
-        }).orElseThrow(() -> new RuntimeException("restaurantId(%s) NOT FOUND.".formatted(restaurantId)));
     }
 
     @Override
     public void deleteRestaurant(Long restaurantId) {
         restaurantRepository.deleteById(restaurantId);
+    }
+
+    @Override
+    public Boolean existsById(Long restaurantId) {
+        return restaurantRepository.existsById(restaurantId);
     }
 
 }

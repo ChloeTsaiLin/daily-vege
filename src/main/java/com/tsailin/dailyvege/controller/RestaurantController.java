@@ -40,10 +40,14 @@ public class RestaurantController {
     @PutMapping("/restaurants/{restaurantId}")
     public ResponseEntity<Object> updateById(@PathVariable Long restaurantId,
                                              @RequestBody @Valid Restaurant restaurantRequest) {
+        if(restaurantService.existsById(restaurantId)){
+            restaurantService.updateRestaurant(restaurantId, restaurantRequest);
+            Restaurant updateRestaurant = restaurantService.getRestaurantById(restaurantId);
 
-        Long id = restaurantService.updateRestaurant(restaurantId, restaurantRequest);
-        Restaurant updateRestaurant = restaurantService.getRestaurantById(id);
-        return ResponseEntity.status(HttpStatus.OK).body(updateRestaurant);
+            return ResponseEntity.status(HttpStatus.OK).body(updateRestaurant);
+        } else{
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
     }
 
     @DeleteMapping("/restaurants/{restaurantId}")

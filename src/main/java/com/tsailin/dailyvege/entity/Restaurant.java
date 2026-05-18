@@ -14,24 +14,16 @@ import java.time.OffsetDateTime;
 public class Restaurant {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "restaurant_id")
     private Long id;
-
-    @Column(nullable = false)
-    private String name;
-
-    @Column(name = "google_place_id",unique = true, nullable = false)
-    @JsonProperty("google_place_id")
-    private String googlePlaceId;
-
-    private Double latitude;
-    private Double longitude;
 
     @Column(name = "veg_type")
     @JsonProperty("veg_type")
     private String vegType;
     //TODO enum：全素vegan/五辛素gokun/奶蛋素lactoOvo
 
-//    private Integer verifyCount;
+    private String restaurantStyle;
+    //TODO enum
 
     private OffsetDateTime createdDate;
 

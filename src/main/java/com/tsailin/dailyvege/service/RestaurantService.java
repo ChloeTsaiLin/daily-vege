@@ -9,8 +9,10 @@ public interface RestaurantService {
 
     Restaurant getRestaurantById(Long restaurantId);
 
-    Long updateRestaurant(Long restaurantId, @Valid Restaurant restaurantRequest);
+    void updateRestaurant(Long restaurantId, @Valid Restaurant restaurantRequest);
 
     void deleteRestaurant(Long restaurantId);
+
+    Boolean existsById(Long restaurantId);
 }
 
