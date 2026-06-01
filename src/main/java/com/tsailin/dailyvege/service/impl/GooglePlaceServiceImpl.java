@@ -1,125 +1,124 @@
 package com.tsailin.dailyvege.service.impl;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.tsailin.dailyvege.entity.Restaurant;
 import com.tsailin.dailyvege.entity.RestaurantGoogleSource;
 import com.tsailin.dailyvege.repository.GoogleSourceRepository;
 import com.tsailin.dailyvege.repository.RestaurantRepository;
 import com.tsailin.dailyvege.service.GooglePlaceService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.ObjectMapper;
 
 import java.time.OffsetDateTime;
 import java.util.*;
 
+@Slf4j
 @Service
 public class GooglePlaceServiceImpl implements GooglePlaceService {
 
     @Value("${google.maps.api-key}")
     private String apiKey;
 
-    @Autowired
-    private RestaurantRepository restaurantRepository;
-
-    @Autowired
-    private GoogleSourceRepository googleSourceRepository;
+    private final RestaurantRepository restaurantRepository;
+    private final GoogleSourceRepository googleSourceRepository;
 
     private final RestTemplate restTemplate = new RestTemplate();
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
+    String fieldMaskBasic = "id,displayName,formattedAddress,types,location";
+        String fieldMaskPro = "regularOpeningHours,rating,priceLevel,servesVegetarianFood";
+        String fieldMask = fieldMaskBasic + "," + fieldMaskPro;
 
     public GooglePlaceServiceImpl(RestaurantRepository restaurantRepository,
-                            GoogleSourceRepository googleSourceRepository) {
+                                  GoogleSourceRepository googleSourceRepository) {
         this.restaurantRepository = restaurantRepository;
         this.googleSourceRepository = googleSourceRepository;
     }
 
-
+    @Override
     @Transactional
     public Restaurant importGoogleRestaurant(String placeId) {
 
+        log.info("Initiating Google Restaurant import for Place ID: {}", placeId);
         String url = "https://places.googleapis.com/v1/places/" + placeId;
-        String fieldMaskBasic = "id,displayName,formattedAddress,types,location";
-//        String fieldMaskPro = "regularOpeningHours,rating,priceLevel,servesVegetarianFood";
-//        String fieldMask = fieldMaskBasic + "," + fieldMaskPro;
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Goog-Api-Key", apiKey);
-        headers.set("X-Goog-FieldMask", fieldMaskBasic);
+        headers.set("X-Goog-FieldMask", fieldMask);         //TODO
 
         HttpEntity<String> entity = new HttpEntity<>(headers);
         try {
             ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
+            Map<String, Object> googleData = (Map<String, Object>) response.getBody();
 
-            Gson gson = new GsonBuilder().setPrettyPrinting().create();
-            String prettyJson = gson.toJson(response.getBody());
-            System.out.println("抓取的資料內容: " + prettyJson);
-
-            // convert json to Map<String, Object>
-            Map<String, Object> mockGoogleData = objectMapper.readValue(
-                    prettyJson,
-                    new TypeReference<Map<String, Object>>() {}
-            );
-
-            System.out.println("Successfully parsed JSON to Map. Preparing DB write...");
+            if (googleData == null || googleData.isEmpty()) {
+                log.warn("Google API returned an empty response for Place ID: {}", placeId);
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No data found from Google API.");
+            }
 
             Restaurant newRestaurant = new Restaurant();
             Restaurant savedRestaurant = restaurantRepository.save(newRestaurant);
 
+            log.debug("Fetched data content: {}", googleData);
             RestaurantGoogleSource newSource = new RestaurantGoogleSource();
             newSource.setRestaurant(savedRestaurant);
             newSource.setGooglePlaceId(placeId);
             newSource.setCreatedDate(OffsetDateTime.now());
 
-            mapGoogleDataToEntity(mockGoogleData, newSource);
+            mapGoogleDataToEntity(googleData, newSource);
             googleSourceRepository.save(newSource);
 
-            if (savedRestaurant.getId() != null) {
-                System.out.println("Generated Core Restaurant ID: " + savedRestaurant.getId());
-            } else {
-                System.err.println("Save failed: Service returned null.");
-            }
-
+            log.info("Successfully imported restaurant. Generated Core Restaurant ID: {}", savedRestaurant.getId());
             return savedRestaurant;
 
         } catch (Exception e) {
-            System.err.println("Google API call failed: " + e.getMessage());
+            log.error("Failed to import Google restaurant for Place ID: {}", placeId, e);
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to import restaurant due to an external API or database error."
+            );
         }
-
-        return new Restaurant();
     }
 
-
     @Override
+    @Transactional
     public Restaurant syncGoogleRestaurant(Long id) {
-        RestaurantGoogleSource existingSource = googleSourceRepository.findById(id)
-                .orElseThrow();
 
+        log.info("Initiating synchronization for local Restaurant ID: {}", id);
+
+        // check exist
+        RestaurantGoogleSource existingSource = googleSourceRepository.findById(id)
+                .orElseThrow(() -> {
+                    log.warn("Synchronization aborted. Local Restaurant ID {} not found.", id);
+                    return new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Cannot synchronize: Restaurant with the given ID does not exist."
+                    );
+                });
+
+        // check response
         try {
             Map<String, Object> googleData = fetchDetailsFromGoogle(existingSource.getGooglePlaceId());
 
-            if (googleData == null) {
+            if (googleData == null || googleData.isEmpty()) {
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Google API returned empty response.");
             }
 
-            System.out.println("Successfully parsed JSON to Map. Preparing DB write...");
             mapGoogleDataToEntity(googleData, existingSource);
             googleSourceRepository.save(existingSource);
 
-            System.out.println("DB save successful. Generated Core Restaurant ID: " + id);
+            log.info("DB save successful. Synchronized Core Restaurant ID: {}", id);
 
             return existingSource.getRestaurant();
 
+        } catch (ResponseStatusException e) {
+            throw e;
+
         } catch (Exception e) {
-            System.err.println("Synchronization failed: " + e.getMessage());
+            log.error("Synchronization failed unexpectedly for local ID: {}", id, e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Google API 呼叫失敗: " + e.getMessage());
         }
     }
@@ -156,7 +155,6 @@ public class GooglePlaceServiceImpl implements GooglePlaceService {
             Object typesObj = googleData.get("types");
 
             if (typesObj instanceof List<?>) {
-
                 ArrayList<String> typesList = new ArrayList<>();
                 for(Object type : (List<?>) typesObj){
                     if(type instanceof String){
@@ -183,7 +181,6 @@ public class GooglePlaceServiceImpl implements GooglePlaceService {
                 && googleData.get("regularOpeningHours") instanceof Map<?, ?> openingHoursList) {
 
                 if (openingHoursList.get("weekdayDescriptions") instanceof List<?> weekdayDesList) {
-
                     List<String> weekdayList = new ArrayList<>();
                     for (Object weekdayDes : weekdayDesList) {
                         if (weekdayDes instanceof String) {
@@ -196,7 +193,6 @@ public class GooglePlaceServiceImpl implements GooglePlaceService {
                         source.setWeekdayDescriptions(joinedHours);
                     }
                 }
-
         }
 
         source.setLastModifiedDate(OffsetDateTime.now());
@@ -204,21 +200,20 @@ public class GooglePlaceServiceImpl implements GooglePlaceService {
 
     private Map<String, Object> fetchDetailsFromGoogle(String googlePlaceId) {
         String url = "https://places.googleapis.com/v1/places/" + googlePlaceId;
-        String fieldMaskBasic = "id,displayName,formattedAddress,types,location";
-//        String fieldMaskPro = "regularOpeningHours,rating,priceLevel,servesVegetarianFood";
-//        String fieldMask = fieldMaskBasic + "," + fieldMaskPro;
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Goog-Api-Key", apiKey);
-        headers.set("X-Goog-FieldMask", fieldMaskBasic);
+        headers.set("X-Goog-FieldMask", fieldMask);         //TODO
 
         HttpEntity<String> entity = new HttpEntity<>(headers);
-        ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
 
-        Map<String, Object> result = response.getBody();
-        System.out.println(result);
-
-        return result;
+        try {
+            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
+            return response.getBody();
+        } catch (RestClientException e) {
+            log.error("HTTP RestTemplate call to Google Places API failed for Place ID: {}", googlePlaceId, e);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to fetch details from Google API.");
+        }
     }
 
 }
