@@ -45,7 +45,8 @@ public class RestaurantServiceImpl implements RestaurantService {
     @Override
     public void updateRestaurant(Long restaurantId, Restaurant restaurantRequest) {
 
-        Restaurant existingRestaurant = getRestaurantById(restaurantId);
+        Restaurant existingRestaurant = restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
 
         existingRestaurant.setVegType(restaurantRequest.getVegType());
         existingRestaurant.setRestaurantStyle(restaurantRequest.getRestaurantStyle());
