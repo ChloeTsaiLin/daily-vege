@@ -13,8 +13,7 @@ import java.time.OffsetDateTime;
 @Service
 public class RestaurantServiceImpl implements RestaurantService {
 
-    @Autowired
-    private RestaurantRepository restaurantRepository;
+    private final RestaurantRepository restaurantRepository;
 
     public RestaurantServiceImpl(RestaurantRepository restaurantRepository) {
         this.restaurantRepository = restaurantRepository;
