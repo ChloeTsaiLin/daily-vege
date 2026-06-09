@@ -1,15 +1,16 @@
 package com.tsailin.dailyvege.service;
 
+import com.tsailin.dailyvege.dto.RestaurantRequestDto;
 import com.tsailin.dailyvege.entity.Restaurant;
 import jakarta.validation.Valid;
 
 
 public interface RestaurantService {
-    Long saveRestaurant(Restaurant restaurantRequest);
+    Long saveRestaurant(RestaurantRequestDto restaurantRequestDto);
 
     Restaurant getRestaurantById(Long restaurantId);
 
-    void updateRestaurant(Long restaurantId, @Valid Restaurant restaurantRequest);
+    void updateRestaurant(Long restaurantId, @Valid RestaurantRequestDto restaurantRequestDto);
 
     void deleteRestaurant(Long restaurantId);
 

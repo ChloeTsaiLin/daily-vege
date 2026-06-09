@@ -1,9 +1,9 @@
 package com.tsailin.dailyvege.controller;
 
+import com.tsailin.dailyvege.dto.RestaurantRequestDto;
 import com.tsailin.dailyvege.entity.Restaurant;
 import com.tsailin.dailyvege.service.RestaurantService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -14,14 +14,17 @@ import org.springframework.web.bind.annotation.*;
 @Validated
 public class RestaurantController {
 
-    @Autowired
-    private RestaurantService restaurantService;
+    private final RestaurantService restaurantService;
+
+    public RestaurantController(RestaurantService restaurantService) {
+        this.restaurantService = restaurantService;
+    }
 
     @PostMapping("/restaurants")
-    public ResponseEntity<Restaurant> create(@RequestBody @Valid Restaurant restaurantRequest){
+    public ResponseEntity<Restaurant> create(@RequestBody @Valid RestaurantRequestDto restaurantRequestDto){
 
-        Long id = restaurantService.saveRestaurant(restaurantRequest);
-        Restaurant restaurant = restaurantService.getRestaurantById(id);
+        Long restaurantId = restaurantService.saveRestaurant(restaurantRequestDto);
+        Restaurant restaurant = restaurantService.getRestaurantById(restaurantId);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(restaurant);
     }
@@ -39,9 +42,9 @@ public class RestaurantController {
 
     @PutMapping("/restaurants/{restaurantId}")
     public ResponseEntity<Object> updateById(@PathVariable Long restaurantId,
-                                             @RequestBody @Valid Restaurant restaurantRequest) {
+                                             @RequestBody @Valid RestaurantRequestDto restaurantRequestDto) {
         if(restaurantService.existsById(restaurantId)){
-            restaurantService.updateRestaurant(restaurantId, restaurantRequest);
+            restaurantService.updateRestaurant(restaurantId, restaurantRequestDto);
             Restaurant updateRestaurant = restaurantService.getRestaurantById(restaurantId);
 
             return ResponseEntity.status(HttpStatus.OK).body(updateRestaurant);
