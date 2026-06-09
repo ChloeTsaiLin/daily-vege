@@ -1,5 +1,6 @@
 package com.tsailin.dailyvege.service.impl;
 
+import com.tsailin.dailyvege.dto.RestaurantRequestDto;
 import com.tsailin.dailyvege.entity.Restaurant;
 import com.tsailin.dailyvege.repository.RestaurantRepository;
 import com.tsailin.dailyvege.service.RestaurantService;
@@ -13,8 +14,7 @@ import java.time.OffsetDateTime;
 @Service
 public class RestaurantServiceImpl implements RestaurantService {
 
-    @Autowired
-    private RestaurantRepository restaurantRepository;
+    private final RestaurantRepository restaurantRepository;
 
     public RestaurantServiceImpl(RestaurantRepository restaurantRepository) {
         this.restaurantRepository = restaurantRepository;
@@ -27,6 +27,7 @@ public class RestaurantServiceImpl implements RestaurantService {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, "Invalid Request: ID should not be provided for creation.");
         }
+
         restaurantRequest.setVegType(restaurantRequest.getVegType());
         restaurantRequest.setRestaurantStyle(restaurantRequest.getRestaurantStyle());
         restaurantRequest.setCreatedDate(OffsetDateTime.now());
@@ -43,12 +44,13 @@ public class RestaurantServiceImpl implements RestaurantService {
     }
 
     @Override
-    public void updateRestaurant(Long restaurantId, Restaurant restaurantRequest) {
+    public void updateRestaurant(Long restaurantId, RestaurantRequestDto restaurantRequestDto) {
 
-        Restaurant existingRestaurant = getRestaurantById(restaurantId);
+        Restaurant existingRestaurant = restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
 
-        existingRestaurant.setVegType(restaurantRequest.getVegType());
-        existingRestaurant.setRestaurantStyle(restaurantRequest.getRestaurantStyle());
+        existingRestaurant.setVegType(restaurantRequestDto.getVegType());
+        existingRestaurant.setRestaurantStyle(restaurantRequestDto.getRestaurantStyle());
         existingRestaurant.setLastModifiedDate(OffsetDateTime.now());
 
         restaurantRepository.save(existingRestaurant);

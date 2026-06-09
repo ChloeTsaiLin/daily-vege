@@ -42,6 +42,10 @@ public class GooglePlaceServiceImpl implements GooglePlaceService {
     @Transactional
     public Restaurant importGoogleRestaurant(String placeId) {
 
+        if (googleSourceRepository.findByGooglePlaceId(placeId).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Restaurant already imported.");
+        }
+
         log.info("Initiating Google Restaurant import for Place ID: {}", placeId);
         String url = "https://places.googleapis.com/v1/places/" + placeId;
 
@@ -60,6 +64,8 @@ public class GooglePlaceServiceImpl implements GooglePlaceService {
             }
 
             Restaurant newRestaurant = new Restaurant();
+            newRestaurant.setCreatedDate(OffsetDateTime.now());
+            newRestaurant.setLastModifiedDate(OffsetDateTime.now());
             Restaurant savedRestaurant = restaurantRepository.save(newRestaurant);
 
             log.debug("Fetched data content: {}", googleData);
@@ -110,6 +116,10 @@ public class GooglePlaceServiceImpl implements GooglePlaceService {
             mapGoogleDataToEntity(googleData, existingSource);
             googleSourceRepository.save(existingSource);
 
+            Restaurant syncRestaurant = restaurantRepository.getReferenceById(id);
+            syncRestaurant.setLastModifiedDate(OffsetDateTime.now());
+            restaurantRepository.save(syncRestaurant);
+
             log.info("DB save successful. Synchronized Core Restaurant ID: {}", id);
 
             return existingSource.getRestaurant();
@@ -147,9 +157,10 @@ public class GooglePlaceServiceImpl implements GooglePlaceService {
             }
         }
 
-        if (googleData.containsKey("rating")) {
-            source.setRating((Double) googleData.get("rating"));
+        if (googleData.containsKey("rating") && googleData.get("rating") != null) {
+            source.setRating(Double.valueOf(googleData.get("rating").toString()));
         }
+
 
         if (googleData.containsKey("types") && googleData.get("types") != null) {
             Object typesObj = googleData.get("types");
