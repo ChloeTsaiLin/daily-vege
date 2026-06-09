@@ -6,7 +6,7 @@ import jakarta.validation.Valid;
 
 
 public interface RestaurantService {
-    Long saveRestaurant(Restaurant restaurantRequest);
+    Long saveRestaurant(RestaurantRequestDto restaurantRequestDto);
 
     Restaurant getRestaurantById(Long restaurantId);
 

@@ -4,7 +4,6 @@ import com.tsailin.dailyvege.dto.RestaurantRequestDto;
 import com.tsailin.dailyvege.entity.Restaurant;
 import com.tsailin.dailyvege.repository.RestaurantRepository;
 import com.tsailin.dailyvege.service.RestaurantService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -21,19 +20,15 @@ public class RestaurantServiceImpl implements RestaurantService {
     }
 
     @Override
-    public Long saveRestaurant(Restaurant restaurantRequest) {
+    public Long saveRestaurant(RestaurantRequestDto restaurantRequestDto) {
 
-        if (restaurantRequest.getId() != null) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "Invalid Request: ID should not be provided for creation.");
-        }
+        Restaurant restaurant = new Restaurant();
+        restaurant.setVegType(restaurantRequestDto.getVegType());
+        restaurant.setRestaurantStyle(restaurantRequestDto.getRestaurantStyle());
+        restaurant.setCreatedDate(OffsetDateTime.now());
+        restaurant.setLastModifiedDate(OffsetDateTime.now());
 
-        restaurantRequest.setVegType(restaurantRequest.getVegType());
-        restaurantRequest.setRestaurantStyle(restaurantRequest.getRestaurantStyle());
-        restaurantRequest.setCreatedDate(OffsetDateTime.now());
-        restaurantRequest.setLastModifiedDate(OffsetDateTime.now());
-
-        Restaurant savedRestaurant = restaurantRepository.save(restaurantRequest);
+        Restaurant savedRestaurant = restaurantRepository.save(restaurant);
 
         return savedRestaurant.getId();
     }

@@ -4,7 +4,6 @@ import com.tsailin.dailyvege.dto.RestaurantRequestDto;
 import com.tsailin.dailyvege.entity.Restaurant;
 import com.tsailin.dailyvege.service.RestaurantService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -22,9 +21,9 @@ public class RestaurantController {
     }
 
     @PostMapping("/restaurants")
-    public ResponseEntity<Restaurant> create(@RequestBody @Valid Restaurant restaurantRequest){
+    public ResponseEntity<Restaurant> create(@RequestBody @Valid RestaurantRequestDto restaurantRequestDto){
 
-        Long restaurantId = restaurantService.saveRestaurant(restaurantRequest);
+        Long restaurantId = restaurantService.saveRestaurant(restaurantRequestDto);
         Restaurant restaurant = restaurantService.getRestaurantById(restaurantId);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(restaurant);
