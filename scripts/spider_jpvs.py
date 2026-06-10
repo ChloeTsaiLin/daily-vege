@@ -82,18 +82,25 @@ try:
         current_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         all_restaurants = []
 
-        for area in soup.find_all('h3'):
-            area_achor = area.find('a')
-            area_name = "unknown"
+        elements = soup.find_all(['h2', 'h3', 'table'])
+        current_h2 = ""
+        current_h3 = ""
 
-            if area_achor and area_achor.has_attr('id'):
-                area_name = area_achor['id'].strip() 
-            print(f"Processing area: {area_name}")
+        for element in elements:
 
-            target_table = area.find_next('table')
+            if element.name == 'h2':
+                area_achor = element.find('a')
 
-            if target_table:
-                rows = target_table.find_all('tr')
+            elif element.name == 'h3':
+                area_achor = element.find('a')
+
+            elif element.name == 'table':
+                area_name = "unknown"
+                if area_achor and area_achor.has_attr('id'):
+                    area_name = area_achor['id'].strip() 
+                print(f"Processing area: {area_name}")
+
+                rows = element.find_all('tr')
                 
                 for row in rows:
                     cells = row.find_all('td')
