@@ -74,80 +74,81 @@ def clean_note_comment(raw_alt_text):
 
 
 try:
-    response = requests.get(URL, headers=HEADERS)
-    if response.status_code == 200:
-        response.encoding = 'utf-8' 
-        
-        soup = BeautifulSoup(response.text, 'html.parser')
-        current_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        all_restaurants = []
+    
+    response = requests.get(URL, headers=HEADERS, timeout=10)
+    if response.status_code != 200:
+        raise requests.HTTPError(f"Request failed with status code {response.status_code}")
+    response.encoding = 'utf-8'
 
-        elements = soup.find_all(['h2', 'h3', 'table'])
-        current_h2 = ""
-        current_h3 = ""
+    soup = BeautifulSoup(response.text, 'html.parser')
+    current_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    all_restaurants = []
 
-        for element in elements:
+    elements = soup.find_all(['h2', 'h3', 'table'])
+    area_achor = ""
 
-            if element.name == 'h2':
-                area_achor = element.find('a')
+    for element in elements:
 
-            elif element.name == 'h3':
-                area_achor = element.find('a')
+        if element.name == 'h2':
+            area_achor = element.find('a')
 
-            elif element.name == 'table':
-                area_name = "unknown"
-                if area_achor and area_achor.has_attr('id'):
-                    area_name = area_achor['id'].strip() 
-                print(f"Processing area: {area_name}")
+        elif element.name == 'h3':
+            area_achor = element.find('a')
 
-                rows = element.find_all('tr')
+        elif element.name == 'table':
+            area_name = "unknown"
+            if area_achor and area_achor.has_attr('id'):
+                area_name = area_achor['id'].strip() 
+            print(f"Processing area: {area_name}")
+
+            rows = element.find_all('tr')
+            
+            for row in rows:
+                cells = row.find_all('td')
                 
-                for row in rows:
-                    cells = row.find_all('td')
-                    
-                    if not cells or len(cells) < 6:
-                        continue
+                if not cells or len(cells) < 6:
+                    continue
 
-                    city = cells[0].text.strip()
-                    # skip table titles and empty layout rows
-                    if re.search(r'地\s*域', city): 
-                        continue        
-                                                            
-                    name = clean_html_cell(cells[2]," ")
-                    if not name:
-                        continue
+                city = cells[0].text.strip()
+                # skip table titles and empty layout rows
+                if re.search(r'地\s*域', city): 
+                    continue        
+                                                        
+                name = clean_html_cell(cells[2]," ")
+                if not name:
+                    continue
 
-                    img_tag = cells[1].find('img')
-                    vege_type = "UNKNOWN"
-                    note_comment = ""
+                img_tag = cells[1].find('img')
+                vege_type = "UNKNOWN"
+                note_comment = ""
 
-                    if img_tag and not isinstance(img_tag, int):
-                            if img_tag.has_attr('src'):
-                                gif_name = img_tag['src'].split('/')[-1]
-                                vege_type = VEGE_TYPE_SWITCH.get(gif_name, "UNKNOWN")      
+                if img_tag and not isinstance(img_tag, int):
+                        if img_tag.has_attr('src'):
+                            gif_name = img_tag['src'].split('/')[-1]
+                            vege_type = VEGE_TYPE_SWITCH.get(gif_name, "UNKNOWN")      
 
-                            if img_tag.has_attr('alt'):
-                                note_comment = clean_note_comment(img_tag['alt'])
+                        if img_tag.has_attr('alt'):
+                            note_comment = clean_note_comment(img_tag['alt'])
 
-                    style = clean_html_cell(cells[3],"、")
-                    phone = cells[4].text.strip() #if len(cells) > 2 else ""
-                    address = clean_html_cell(cells[5]," ")
+                style = clean_html_cell(cells[3],"、")
+                phone = cells[4].text.strip() #if len(cells) > 2 else ""
+                address = clean_html_cell(cells[5]," ")
 
-                    all_restaurants.append({
-                        "area_name": area_name,     # 都道県府
-                        "city": city,               # 地域
-                        "veg_type": vege_type,      #類
-                        "raw_name": name,
-                        "raw_style": style,         #料理
-                        "raw_phone": phone,
-                        "raw_address": address, 
-                        "raw_comment": note_comment, #類(コメント)
-                        "scraped_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    })
+                all_restaurants.append({
+                    "area_name": area_name,     # 都道県府
+                    "city": city,               # 地域
+                    "veg_type": vege_type,      #類
+                    "raw_name": name,
+                    "raw_style": style,         #料理
+                    "raw_phone": phone,
+                    "raw_address": address, 
+                    "raw_comment": note_comment, #類(コメント)
+                    "scraped_at": current_timestamp
+                })
 
-        df = pd.DataFrame(all_restaurants)
-        df.to_csv("certified_restaurants.csv", index=False, encoding="utf-8-sig")
-        print(f"Scraping completed. Total {len(all_restaurants)} restaurants extracted.")
+    df = pd.DataFrame(all_restaurants)
+    df.to_csv("certified_restaurants.csv", index=False, encoding="utf-8-sig")
+    print(f"Scraping completed. Total {len(all_restaurants)} restaurants extracted.")
 
 except Exception as e:
     print(f"Exception occurred: {e}")
