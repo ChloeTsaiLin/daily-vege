@@ -33,14 +33,6 @@ out/
 /nbdist/
 /.nb-gradle/
 
-# Python virtual environment
-.venv/
-venv/
-__pycache__/
-
-# Data output (Ignore CSV data files)
-*.csv
-
 ### VS Code ###
 .vscode/
 
